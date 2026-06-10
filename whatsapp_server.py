@@ -15,14 +15,13 @@ SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 def get_calendar_service():
-    creds = None
-    if os.path.exists("token.json"):
-        creds = Credentials.from_authorized_user_file("token.json", SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+    import json
+    token_data = os.environ.get("GOOGLE_TOKEN_JSON")
+    creds = Credentials.from_authorized_user_info(json.loads(token_data), SCOPES)
+    if creds.expired and creds.refresh_token:
+        creds.refresh(Request())
     return build("calendar", "v3", credentials=creds)
-
+    
 def get_events_this_week():
     service = get_calendar_service()
     now = datetime.utcnow()
