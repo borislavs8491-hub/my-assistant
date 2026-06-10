@@ -11,7 +11,7 @@ import anthropic
 app = Flask(__name__)
 
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
-ANTHROPIC_API_KEY = open('assistant.py').read().split('ANTHROPIC_API_KEY = "')[1].split('"')[0]
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 def get_calendar_service():
     creds = None
