@@ -12,7 +12,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app)
 
-SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
+SCOPES = ['https://www.googleapis.com/auth/calendar']
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 def get_calendar_service():
@@ -39,6 +39,23 @@ def get_events_this_week():
         return "No events this week"
     return "\n".join([f"- {e.get('summary','No title')}: {e['start'].get('dateTime',e['start'].get('date'))}" for e in events])
 
+def create_event(summary, date_str, time_str=None):
+    service = get_calendar_service()
+    if time_str:
+        start = {"dateTime": f"{date_str}T{time_str}:00", "timeZone": "Asia/Jerusalem"}
+        end = {"dateTime": f"{date_str}T{time_str}:00", "timeZone": "Asia/Jerusalem"}
+    else:
+        start = {"date": date_str}
+        end = {"date": date_str}
+    event = {
+        "summary": summary,
+        "start": start,
+        "end": end,
+        "reminders": {"useDefault": True}
+    }
+    service.events().insert(calendarId="primary", body=event).execute()
+    return f"✅ נוצר אירוע: {summary} בתאריך {date_str}"
+
 @app.route("/webhook", methods=["POST"])
 def webhook():
     incoming_msg = request.values.get("Body", "").strip()
@@ -52,9 +69,22 @@ def webhook():
     result = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1024,
-        messages=[{"role": "user", "content": f"You are a personal assistant. Calendar this week:\n{events_text}\n\nUser message: {incoming_msg}\n\nReply in Hebrew, be concise."}]
+        system="""אתה עוזרת אישית חכמה בעברית. יש לך גישה ליומן Google Calendar של המשתמש.
+אם המשתמש רוצה להוסיף אירוע, ענה בפורמט JSON בלבד:
+{"action": "create_event", "summary": "שם האירוע", "date": "YYYY-MM-DD", "time": "HH:MM"}
+אחרת ענה בעברית רגילה, בתמציתיות.""",
+        messages=[{"role": "user", "content": f"יומן השבוע:\n{events_text}\n\nהודעת המשתמש: {incoming_msg}"}]
     )
-    msg.body(result.content[0].text)
+    response_text = result.content[0].text
+    try:
+        data = json.loads(response_text)
+        if data.get("action") == "create_event":
+            reply = create_event(data["summary"], data["date"], data.get("time"))
+        else:
+            reply = response_text
+    except:
+        reply = response_text
+    msg.body(reply)
     return str(resp)
 
 if __name__ == "__main__":
