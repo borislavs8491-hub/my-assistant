@@ -3,12 +3,13 @@ from twilio.twiml.messaging_response import MessagingResponse
 import os
 from datetime import datetime, timedelta
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 import anthropic
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app)
 
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -56,8 +57,4 @@ def webhook():
     return str(resp)
 
 if __name__ == "__main__":
-    app.run(port=5000)
-
-# Fix for ngrok
-from werkzeug.middleware.proxy_fix import ProxyFix
-app.wsgi_app = ProxyFix(app.wsgi_app)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
