@@ -65,13 +65,16 @@ def webhook():
         events_text = get_events_this_week()
     except Exception as e:
         events_text = f"Could not load calendar: {e}"
+    today = datetime.now().strftime("%Y-%m-%d")
+    day_name = ["שני","שלישי","רביעי","חמישי","שישי","שבת","ראשון"][datetime.now().weekday()]
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     result = client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=1024,
-        system="""אתה עוזרת אישית חכמה בעברית. יש לך גישה ליומן Google Calendar של המשתמש.
+        system=f"""אתה עוזרת אישית חכמה בעברית. היום יום {day_name}, תאריך {today}.
+יש לך גישה ליומן Google Calendar של המשתמש.
 אם המשתמש רוצה להוסיף אירוע או תזכורת, ענה בפורמט JSON בלבד ללא טקסט נוסף:
-{"action": "create_event", "summary": "שם האירוע", "date": "YYYY-MM-DD", "time": "HH:MM"}
+{{"action": "create_event", "summary": "שם האירוע", "date": "YYYY-MM-DD", "time": "HH:MM"}}
 אחרת ענה בעברית רגילה, בתמציתיות.""",
         messages=[{"role": "user", "content": f"יומן השבוע:\n{events_text}\n\nהודעת המשתמש: {incoming_msg}"}]
     )
