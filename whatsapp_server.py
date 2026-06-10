@@ -70,12 +70,12 @@ def webhook():
         model="claude-sonnet-4-6",
         max_tokens=1024,
         system="""אתה עוזרת אישית חכמה בעברית. יש לך גישה ליומן Google Calendar של המשתמש.
-אם המשתמש רוצה להוסיף אירוע, ענה בפורמט JSON בלבד:
+אם המשתמש רוצה להוסיף אירוע או תזכורת, ענה בפורמט JSON בלבד ללא טקסט נוסף:
 {"action": "create_event", "summary": "שם האירוע", "date": "YYYY-MM-DD", "time": "HH:MM"}
 אחרת ענה בעברית רגילה, בתמציתיות.""",
         messages=[{"role": "user", "content": f"יומן השבוע:\n{events_text}\n\nהודעת המשתמש: {incoming_msg}"}]
     )
-    response_text = result.content[0].text
+    response_text = result.content[0].text.strip()
     try:
         data = json.loads(response_text)
         if data.get("action") == "create_event":
