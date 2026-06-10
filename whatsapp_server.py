@@ -1,6 +1,7 @@
 from flask import Flask, request
 from twilio.twiml.messaging_response import MessagingResponse
 import os
+import json
 from datetime import datetime, timedelta
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
@@ -15,13 +16,12 @@ SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 
 def get_calendar_service():
-    import json
     token_data = os.environ.get("GOOGLE_TOKEN_JSON")
     creds = Credentials.from_authorized_user_info(json.loads(token_data), SCOPES)
     if creds.expired and creds.refresh_token:
         creds.refresh(Request())
     return build("calendar", "v3", credentials=creds)
-    
+
 def get_events_this_week():
     service = get_calendar_service()
     now = datetime.utcnow()
@@ -44,8 +44,10 @@ def webhook():
     incoming_msg = request.values.get("Body", "").strip()
     resp = MessagingResponse()
     msg = resp.message()
-    
-    events_text = get_events_this_week()
+    try:
+        events_text = get_events_this_week()
+    except Exception as e:
+        events_text = f"Could not load calendar: {e}"
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     result = client.messages.create(
         model="claude-sonnet-4-6",
